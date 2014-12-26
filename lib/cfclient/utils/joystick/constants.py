@@ -24,28 +24,9 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 """
-Multiplatform python joystick driver
-Back-end currently implemented for linux_udev and pygame
+Various constants used in the Joystick module
 """
 
-from .constants import TYPE_BUTTON, TYPE_AXIS
-
-try:
-    import linuxjsdev
-
-    if not locals().has_key('Joystick'):
-        from .linuxjsdev import Joystick
-except ImportError:
-    pass
-
-try:
-    import pygamejoystick
-
-    if not locals().has_key('Joystick'):
-        from .pygamejoystick import Joystick
-except ImportError:
-    pass
-
-if not locals().has_key('Joystick'):
-    raise Exception("No suitable Joystick driver. " +
-                    "Driver supported: Linux, pygame.")
+#Constants
+TYPE_BUTTON = 1
+TYPE_AXIS = 2
