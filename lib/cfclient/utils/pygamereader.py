@@ -26,34 +26,28 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 """
-Driver for reading data from the PySDL2 API. Used from Inpyt.py for reading input data.
+Driver for reading data from the PyGame API. Used from Inpyt.py for reading input data.
 """
 
 __author__ = 'Bitcraze AB'
-__all__ = ['PySDL2Reader']
-import sdl2
-import sdl2.ext
-import sdl2.hints
+__all__ = ['PyGameReader']
+import pygame
+from pygame.locals import *
 import time
-import logging
-import sys
 
-logger = logging.getLogger(__name__)
-
-class PySDL2Reader():
-    """Used for reading data from input devices using the PySDL2 API."""
+class PyGameReader():
+    """Used for reading data from input devices using the PyGame API."""
     def __init__(self):
         self.inputMap = None
-        sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO | sdl2.SDL_INIT_JOYSTICK)
-        sdl2.SDL_SetHint(sdl2.hints.SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1")
-        sdl2.ext.init()
+        pygame.init()
 
     def start_input(self, deviceId, inputMap):
         """Initalize the reading and open the device with deviceId and set the mapping for axis/buttons using the
         inputMap"""
-        self.data = {"roll":0.0, "pitch":0.0, "yaw":0.0, "thrust":-1.0, "pitchcal":0.0, "rollcal":0.0, "estop": False, "exit":False, "althold":False}
+        self.data = {"roll":0.0, "pitch":0.0, "yaw":0.0, "thrust":0.0, "pitchcal":0.0, "rollcal":0.0, "estop": False, "exit":False, "althold":False}
         self.inputMap = inputMap
-        self.j = sdl2.SDL_JoystickOpen(deviceId)
+        self.j = pygame.joystick.Joystick(deviceId)
+        self.j.init()
 
     def read_input(self):
         """Read input from the selected device."""
@@ -61,16 +55,14 @@ class PySDL2Reader():
         # save this value.
         self.data["pitchcal"] = 0.0
         self.data["rollcal"]  = 0.0
-
-        for e in sdl2.ext.get_events():
-          if e.type == sdl2.SDL_JOYAXISMOTION:
-            index = "Input.AXIS-%d" % e.jaxis.axis
+        
+        for e in pygame.event.get():
+          if e.type == pygame.locals.JOYAXISMOTION:
+            index = "Input.AXIS-%d" % e.axis 
             try:
                 if (self.inputMap[index]["type"] == "Input.AXIS"):
                     key = self.inputMap[index]["key"]
-                    axisvalue = e.jaxis.value / 32767.0
-                    # Offset the value first
-                    axisvalue = axisvalue + self.inputMap[index]["offset"]
+                    axisvalue = self.j.get_axis(e.axis)
                     # All axis are in the range [-a,+a]
                     axisvalue = axisvalue * self.inputMap[index]["scale"]
                     # The value is now in the correct direction and in the range [-1,1]
@@ -79,8 +71,8 @@ class PySDL2Reader():
                 # Axis not mapped, ignore..
                 pass          
 
-          if e.type == sdl2.SDL_JOYBUTTONDOWN:
-            index = "Input.BUTTON-%d" % e.jbutton.button            
+          if e.type == pygame.locals.JOYBUTTONDOWN:
+            index = "Input.BUTTON-%d" % e.button            
             try:
                 if (self.inputMap[index]["type"] == "Input.BUTTON"):
                     key = self.inputMap[index]["key"]
@@ -96,8 +88,8 @@ class PySDL2Reader():
                 # Button not mapped, ignore..
                 pass
           
-          if e.type == sdl2.SDL_JOYBUTTONUP:
-            index = "Input.BUTTON-%d" % e.jbutton.button
+          if e.type == pygame.locals.JOYBUTTONUP:
+            index = "Input.BUTTON-%d" % e.button            
             try:
                 if (self.inputMap[index]["type"] == "Input.BUTTON"):
                     key = self.inputMap[index]["key"]
@@ -106,27 +98,14 @@ class PySDL2Reader():
             except Exception:
                 # Button not mapped, ignore..
                 pass            
-
-          if e.type == sdl2.SDL_JOYHATMOTION:
-            index = "Input.HAT-%d" % e.jhat.hat
-            try:
-                if (self.inputMap[index]["type"] == "Input.HAT"):
-                    key = self.inputMap[index]["key"]
-                    if (key == "trim"):
-                        self.data["rollcal"] = e.value[0] * self.inputMap[index]["scale"]
-                        self.data["pitchcal"] = e.value[1] * self.inputMap[index]["scale"]
-            except Exception:
-                # Hat not mapped, ignore..
-                pass
             
 
         return self.data
 
     def enableRawReading(self, deviceId):
         """Enable reading of raw values (without mapping)"""
-        logger.info("Now opening")
-        #self.j = sdl2.joystick.SDL_JoystickOpen(deviceId)
-        logger.info("Open")
+        self.j = pygame.joystick.Joystick(deviceId)
+        self.j.init()
 
     def disableRawReading(self):
         """Disable raw reading"""
@@ -135,49 +114,32 @@ class PySDL2Reader():
 
     def readRawValues(self):
         """Read out the raw values from the device"""
-
         rawaxis = {}
         rawbutton = {}
 
-        for event in sdl2.ext.get_events():
-            if event.type == sdl2.SDL_JOYBUTTONDOWN:
-                rawbutton[event.jbutton.button] = 1
-            if event.type == sdl2.SDL_JOYBUTTONUP:
-                rawbutton[event.jbutton.button] = 0
-            if event.type == sdl2.SDL_JOYAXISMOTION:
-                rawaxis[event.jaxis.axis] = event.jaxis.value / 32767.0
-            if event.type == sdl2.SDL_JOYHATMOTION:
-                if event.jhat.value == sdl2.SDL_HAT_CENTERED:
-                    rawbutton[21] = 0
-                    rawbutton[22] = 0
-                    rawbutton[23] = 0
-                    rawbutton[24] = 0
-                elif event.jhat.value == sdl2.SDL_HAT_UP:
-                    rawbutton[21] = 1
-                elif event.jhat.value == sdl2.SDL_HAT_DOWN:
-                    rawbutton[22] = 1
-                elif event.jhat.value == sdl2.SDL_HAT_LEFT:
-                    rawbutton[23] = 1
-                elif event.jhat.value == sdl2.SDL_HAT_RIGHT:
-                    rawbutton[24] = 1
+        for e in pygame.event.get():
+            if e.type == pygame.locals.JOYBUTTONDOWN:
+                rawbutton[e.button] = 1
+            if e.type == pygame.locals.JOYBUTTONUP:
+                rawbutton[e.button] = 0
+            if e.type == pygame.locals.JOYAXISMOTION:
+                rawaxis[e.axis] = self.j.get_axis(e.axis)
 
         return [rawaxis,rawbutton]
 
     def getAvailableDevices(self):
         """List all the available devices."""
-        logger.info("Looking for devices")
         dev = []
+        pygame.joystick.quit()
+        pygame.joystick.init()
         names = []
-        if hasattr(self, 'j') and sdl2.joystick.SDL_JoystickGetAttached(self.j):
-            sdl2.joystick.SDL_JoystickClose(self.j)
-
-        nbrOfInputs = sdl2.joystick.SDL_NumJoysticks()
-        for i in range(0, nbrOfInputs):
-            j = sdl2.joystick.SDL_JoystickOpen(i)
-            name = sdl2.joystick.SDL_JoystickName(j)
+        nbrOfInputs = pygame.joystick.get_count()
+        for i in range(0,nbrOfInputs):
+            j = pygame.joystick.Joystick(i)
+            name = j.get_name()
             if names.count(name) > 0:
                 name = "{0} #{1}".format(name, names.count(name) + 1)
             dev.append({"id":i, "name" : name})
             names.append(name)
-            sdl2.joystick.SDL_JoystickClose(j)
         return dev
+

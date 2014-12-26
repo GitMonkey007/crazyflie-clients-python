@@ -1,6 +1,4 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#
 #     ||          ____  _ __
 #  +------+      / __ )(_) /_______________ _____  ___
 #  | 0xBC |     / __  / / __/ ___/ ___/ __ `/_  / / _ \
@@ -20,41 +18,25 @@
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-
+#
 #  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software
-#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-#  MA  02110-1301, USA.
+#  along with this program; if not, write to the Free Software Foundation,
+#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 """
-Used for sending control setpoints to the Crazyflie
+Simple event class implementation that fancify a be the event usage.
 """
 
-__author__ = 'Bitcraze AB'
-__all__ = ['PlatformService']
 
-from cflib.crtp.crtpstack import CRTPPacket, CRTPPort
-import struct
-
-
-class PlatformService():
+class JEvent(object):
     """
-    Used for sending control setpoints to the Crazyflie
+    Joystick event class. Encapsulate single joystick event.
     """
+    def __init__(self, evt_type, number, value):
+        self.type = evt_type
+        self.number = number
+        self.value = value
 
-    def __init__(self, crazyflie=None):
-        """
-        Initialize the platform object.
-        """
-        self._cf = crazyflie
-
-    def set_continous_wave(self, enabled):
-        """
-        Enable/disable the client side X-mode. When enabled this recalculates
-        the setpoints before sending them to the Crazyflie.
-        """
-        pk = CRTPPacket()
-        pk.set_header(CRTPPort.PLATFORM, 0)
-        pk.data = (0, enabled)
-        self._cf.send_packet(pk)
-
+    def __repr__(self):
+        return "JEvent(type={}, number={}, value={})".format(self.type,
+                   self.number, self.value)
